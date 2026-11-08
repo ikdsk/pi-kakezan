@@ -45,27 +45,6 @@ export function levelInfo(xp) {
   return { level, into, need, ratio: into / need };
 }
 
-// ---------- コンボ ----------
-
-const TIERS = [
-  { at: 20, tier: 4, text: 'でんせつ!!!' },
-  { at: 10, tier: 3, text: '天才!?' },
-  { at: 5, tier: 2, text: 'すごすぎ!' },
-  { at: 3, tier: 1, text: 'コンボ!' },
-];
-
-/** 連続正解数に応じた段階(0〜4)と煽り文言。 */
-export function comboTier(combo) {
-  const t = TIERS.find((x) => combo >= x.at);
-  return t ? { tier: t.tier, text: t.text } : { tier: 0, text: '' };
-}
-
-/** ちょうど段階に届いた瞬間だけその段階、それ以外は 0。 */
-export function comboMilestone(combo) {
-  const t = TIERS.find((x) => x.at === combo);
-  return t ? t.tier : 0;
-}
-
 // ---------- 進捗データ ----------
 
 export function defaultProgress() {

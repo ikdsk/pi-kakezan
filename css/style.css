@@ -26,6 +26,8 @@ body {
   overflow-wrap: break-word;
 }
 #app {
+  position: relative;
+  z-index: 1;
   max-width: 560px;
   margin: 0 auto;
   min-height: 100vh;
@@ -76,6 +78,7 @@ button:disabled { cursor: default; box-shadow: 0 5px 0 var(--line); }
 
 .panel { background: var(--card); border: 3px solid var(--line); border-radius: var(--radius); padding: 12px; margin: 10px 0; box-shadow: 0 5px 0 var(--line); }
 .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.seg.two { grid-template-columns: 1fr 1fr; }
 .seg button { padding: 8px 4px; font-size: .9rem; box-shadow: 0 3px 0 var(--line); }
 .seg button[aria-pressed="true"] { background: var(--yellow); }
 
@@ -98,12 +101,24 @@ button:disabled { cursor: default; box-shadow: 0 5px 0 var(--line); }
 .progress { height: 10px; background: #fff; border: 2px solid var(--line); border-radius: 999px; overflow: hidden; margin-bottom: 8px; }
 .progress > i { display: block; height: 100%; background: linear-gradient(90deg, #19b7f2, #6a3df0); transition: width .25s; }
 
-.hud { display: flex; align-items: center; justify-content: space-between; min-height: 40px; gap: 8px; margin-bottom: 4px; }
-.combo { font-weight: 900; font-size: 1.1rem; min-width: 7em; }
-.combo.t1 { color: #c2410c; } .combo.t2 { color: #b3123f; font-size: 1.25rem; } .combo.t3 { color: #6d28d9; font-size: 1.4rem; } .combo.t4 { color: #be185d; font-size: 1.55rem; }
-.combo.bump { animation: bump .35s; }
-.hud .lvchip { display: flex; align-items: center; gap: 6px; font-weight: 900; font-size: .85rem; }
-.hud .lvchip .xpbar { width: 90px; height: 12px; margin: 0; border-color: var(--line); background: #fff; }
+.hud { display: flex; align-items: center; justify-content: space-between; min-height: 48px; gap: 14px; margin-bottom: 4px; }
+.hud .lvchip { display: flex; flex-shrink: 0; white-space: nowrap; align-items: center; gap: 6px; font-weight: 900; font-size: .85rem; }
+.hud .lvchip .xpbar { width: 64px; height: 12px; margin: 0; border-color: var(--line); background: #fff; }
+/* コンボ表示: 数が増えるほど炎が増えて、色が熱くなる */
+.combo { display: flex; flex-wrap: nowrap; white-space: nowrap; align-items: baseline; gap: .2em; min-width: 0; font-weight: 900; line-height: 1.1; }
+.combo .fl { display: inline-block; transform-origin: 50% 90%; font-size: .72em; letter-spacing: -.08em; }
+.combo .cn { display: inline-block; font-size: 1.55em; font-variant-numeric: tabular-nums; }
+.combo .cl { font-size: .68em; letter-spacing: .03em; }
+.combo.heat0 { color: #8a84a8; font-size: 1rem; }
+.combo.heat1 { color: #b45309; font-size: 1.1rem; }
+.combo.heat2 { color: #c2410c; font-size: 1.2rem; }
+.combo.heat3 { color: #be185d; font-size: 1.3rem; text-shadow: 0 0 10px rgba(255,170,40,.75); }
+.combo.heat4 { color: #7e22ce; font-size: 1.4rem; text-shadow: 0 0 12px rgba(255,200,40,.9); }
+.combo.heat5 { color: #a21caf; font-size: 1.5rem; text-shadow: 0 0 14px rgba(255,210,40,1), 0 0 4px #fff; }
+.combo.heat2 .fl, .combo.heat3 .fl, .combo.heat4 .fl, .combo.heat5 .fl { animation: flick .55s ease-in-out infinite alternate; }
+.combo.bump .cn { animation: counterpop .42s cubic-bezier(.2,1.6,.4,1); }
+@keyframes counterpop { 0% { transform: scale(2.1) rotate(-8deg); } 60% { transform: scale(.92); } 100% { transform: scale(1); } }
+@keyframes flick { from { transform: scale(1) rotate(-4deg); } to { transform: scale(1.18) rotate(4deg); } }
 
 .question { font-size: 2.2rem; font-weight: 900; text-align: center; margin: 8px 0; letter-spacing: .02em; }
 .question small { display: block; font-size: .85rem; font-weight: 700; color: var(--sub); }
@@ -189,11 +204,6 @@ tr.mastered td { background: #fff7c2; }
 .fx-pop { white-space: nowrap; position: fixed; z-index: 920; pointer-events: none; font-weight: 900; font-size: 1.8rem; color: #14532d; -webkit-text-stroke: 4px #fff; paint-order: stroke fill; transform: translate(-50%, -50%); animation: floatup .9s ease-out forwards; }
 .fx-pop.bad { color: #7c2d12; }
 .fx-pop.xp2 { color: #6b21a8; font-size: 1.3rem; }
-.fx-banner { position: fixed; left: 50%; top: 26%; z-index: 930; pointer-events: none; font-weight: 900; white-space: nowrap; color: #fff; -webkit-text-stroke: 6px var(--purple); paint-order: stroke fill; transform: translate(-50%, -50%); animation: bannerpop .95s cubic-bezier(.2,1.4,.4,1) forwards; }
-.fx-banner.tier-1 { font-size: 2.6rem; }
-.fx-banner.tier-2 { font-size: 3.2rem; color: #ffd400; }
-.fx-banner.tier-3 { font-size: 3.8rem; color: #ff6ec7; }
-.fx-banner.tier-4 { font-size: 4.2rem; color: #7cf3ff; }
 .fx-toasts { position: fixed; left: 0; right: 0; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 1100; display: flex; flex-direction: column; align-items: center; pointer-events: none; padding: 0 12px; }
 .fx-toast { pointer-events: none; width: min(520px, 100%); background: var(--purple); color: #fff; border: 3px solid #fff; border-radius: var(--radius); box-shadow: 0 6px 0 rgba(0,0,0,.35); padding: 5px 12px; animation: toastin .35s cubic-bezier(.2,1.3,.4,1); }
 .fx-toast.out { animation: toastout .25s forwards; }
@@ -216,15 +226,12 @@ tr.mastered td { background: #fff7c2; }
 .ending .sumgrid b { display: block; font-size: 1.25rem; color: var(--yellow); }
 .ending button { color: var(--ink); background: var(--yellow); }
 
-.shake { animation: shake .4s; }
 .pop { animation: pop .35s cubic-bezier(.2,1.6,.4,1); }
 
 @keyframes pop { 0% { transform: scale(1); } 45% { transform: scale(1.1); } 100% { transform: scale(1); } }
 @keyframes bump { from { transform: scale(1); } to { transform: scale(1.12); } }
-@keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-9px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(3px); } }
 @keyframes flashout { from { opacity: 1; } to { opacity: 0; } }
 @keyframes floatup { 0% { opacity: 0; margin-top: 10px; } 15% { opacity: 1; } 100% { opacity: 0; margin-top: -70px; } }
-@keyframes bannerpop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(-8deg); } 30% { opacity: 1; transform: translate(-50%, -50%) scale(1.15) rotate(3deg); } 70% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); } 100% { opacity: 0; transform: translate(-50%, -60%) scale(1.05); } }
 @keyframes toastin { from { transform: translateY(140%); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes toastout { to { transform: translateY(140%); opacity: 0; } }
 @keyframes ovin { from { opacity: 0; transform: scale(1.08); } to { opacity: 1; transform: none; } }
@@ -234,7 +241,6 @@ tr.mastered td { background: #fff7c2; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .fx-pop { animation: none; opacity: 1; }
-  .fx-banner { animation: none; opacity: 1; }
 }
 
 /* せまい画面(iPhone SE など)で語の途中で折り返さない・はみ出さない */
@@ -256,7 +262,99 @@ tr.mastered td { background: #fff7c2; }
   .ach .icon { width: 48px; height: 48px; font-size: 1.6rem; }
   table.list td.q { padding-left: 2px; }
   .bar { display: none; }
+  .hud .lvchip .xpbar { display: none; }
+  .combo .fl { font-size: .6em; }
   table.list th { font-size: .7rem; }
   table.list td { font-size: .85rem; }
   table.list th, table.list td { padding-left: 2px; padding-right: 2px; }
+}
+
+/* ---------- コンボ演出(combo.js の設計表どおりに combofx.js が出す) ---------- */
+/* シェイク・ズームは #app に付ける(transform / scale のみ) */
+.fxs-small { animation: sh-small .25s; }
+.fxs-medium { animation: sh-medium .36s; }
+.fxs-strong { animation: sh-strong .46s; }
+.fxs-huge { animation: sh-huge .66s; }
+.fxz { animation: zoompunch .3s ease-out; }
+.fxs-small.fxz { animation: sh-small .25s, zoompunch .3s ease-out; }
+.fxs-medium.fxz { animation: sh-medium .36s, zoompunch .3s ease-out; }
+.fxs-strong.fxz { animation: sh-strong .46s, zoompunch .3s ease-out; }
+.fxs-huge.fxz { animation: sh-huge .66s, zoompunch .4s ease-out; }
+@keyframes sh-small { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 50% { transform: translateX(3px); } 75% { transform: translateX(-2px); } }
+@keyframes sh-medium { 0%,100% { transform: translate(0,0); } 15% { transform: translate(-7px,2px); } 35% { transform: translate(6px,-2px); } 55% { transform: translate(-5px,2px); } 75% { transform: translate(3px,-1px); } }
+@keyframes sh-strong { 0%,100% { transform: translate(0,0) rotate(0); } 12% { transform: translate(-12px,4px) rotate(-.5deg); } 28% { transform: translate(11px,-4px) rotate(.5deg); } 44% { transform: translate(-9px,3px) rotate(-.3deg); } 62% { transform: translate(7px,-2px) rotate(.2deg); } 80% { transform: translate(-3px,1px); } }
+@keyframes sh-huge { 0%,100% { transform: translate(0,0) rotate(0); } 8% { transform: translate(-18px,6px) rotate(-.9deg); } 20% { transform: translate(16px,-6px) rotate(.9deg); } 34% { transform: translate(-14px,5px) rotate(-.6deg); } 48% { transform: translate(11px,-4px) rotate(.5deg); } 64% { transform: translate(-7px,3px) rotate(-.3deg); } 80% { transform: translate(3px,-1px); } }
+@keyframes zoompunch { 0% { scale: 1; } 30% { scale: 1.07; } 100% { scale: 1; } }
+
+.fx-tint { position: fixed; inset: 0; pointer-events: none; z-index: 870; animation: tintpulse .68s ease-out forwards; }
+@keyframes tintpulse { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
+
+.fx-slam { position: fixed; left: 50%; top: 38%; z-index: 960; pointer-events: none; white-space: nowrap; font-weight: 900; font-size: clamp(2.6rem, 14vw, 4.6rem); color: #fff; -webkit-text-stroke: 8px var(--purple); paint-order: stroke fill; transform: translate(-50%, -50%); animation: slam .8s cubic-bezier(.2,1.2,.3,1) forwards; }
+.fx-slam.ghosty, .fx-full .ghosty { text-shadow: -10px 0 rgba(255,90,220,.6), -22px 0 rgba(60,210,255,.45), -36px 0 rgba(255,230,60,.3); }
+@keyframes slam { 0% { opacity: 0; transform: translate(-50%,-50%) scale(3.4); } 28% { opacity: 1; transform: translate(-50%,-50%) scale(.9); } 42% { transform: translate(-50%,-50%) scale(1.06); } 55% { transform: translate(-50%,-50%) scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1); } }
+
+.fx-ctext { position: fixed; left: 50%; top: 30%; z-index: 960; pointer-events: none; transform: translateX(-50%); background: #fff; color: var(--ink); border: 3px solid var(--line); border-radius: var(--radius); padding: 8px 18px; font-weight: 900; font-size: 1.8rem; text-align: center; max-width: 92vw; animation: ctextfade 1s ease-out forwards; }
+.fx-ctext small { display: block; font-size: .8rem; font-weight: 700; color: var(--sub); }
+@keyframes ctextfade { 0% { opacity: 0; } 15% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+
+.fx-band-wrap { position: fixed; inset: 0; z-index: 955; pointer-events: none; overflow: hidden; }
+.fx-band { position: absolute; left: -10%; width: 120%; top: 34%; height: max(92px, 22vmin); display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(90deg, #6a3df0, #ff3d81 55%, #ffd400); border-top: 4px solid #fff; border-bottom: 4px solid #fff; transform: rotate(-9deg) translateX(-130%); animation: bandcross .8s cubic-bezier(.2,.9,.3,1) forwards; }
+.fx-band .bt { font-weight: 900; font-size: clamp(2rem, 11vw, 3.6rem); color: #fff; -webkit-text-stroke: 7px var(--purple); paint-order: stroke fill; white-space: nowrap; line-height: 1.05; }
+.fx-band .bl { font-weight: 900; font-size: 1rem; color: #fff; text-shadow: 0 2px 0 var(--purple); }
+@keyframes bandcross { 0% { transform: rotate(-9deg) translateX(-130%); } 22% { transform: rotate(-9deg) translateX(0); } 78% { transform: rotate(-9deg) translateX(0); } 100% { transform: rotate(-9deg) translateX(130%); } }
+.fx-speed { position: absolute; inset: -25%; background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,0) 0deg 3deg, rgba(255,255,255,.75) 3deg 3.7deg, rgba(255,255,255,0) 3.7deg 8deg); -webkit-mask: radial-gradient(circle at 50% 50%, transparent 20%, #000 62%); mask: radial-gradient(circle at 50% 50%, transparent 20%, #000 62%); animation: speedlines .8s ease-out forwards; }
+@keyframes speedlines { 0% { opacity: 0; transform: scale(1.35); } 20% { opacity: .85; } 100% { opacity: 0; transform: scale(1); } }
+
+/* 全画面カットイン(10 以上) */
+.fx-full { --d: 800ms; position: fixed; inset: 0; z-index: 955; pointer-events: none; overflow: hidden; }
+.fx-full .dim { position: absolute; inset: 0; background: rgba(25,10,70,.55); animation: dimfade var(--d) ease-out forwards; }
+@keyframes dimfade { 0% { opacity: 0; } 12% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
+.fx-full .sb-wrap { position: absolute; inset: 0; -webkit-mask: radial-gradient(circle, #000 5%, transparent 55%); mask: radial-gradient(circle, #000 5%, transparent 55%); animation: dimfade var(--d) ease-out forwards; }
+.fx-full .sunburst { position: absolute; left: 50%; top: 50%; width: 150vmax; height: 150vmax; margin: -75vmax 0 0 -75vmax; background: repeating-conic-gradient(from 0deg, rgba(255,235,120,.5) 0deg 7deg, rgba(255,255,255,0) 7deg 14deg); animation: spin 4s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.fx-full .band { position: absolute; left: -10%; width: 120%; top: 40%; height: max(70px, 15vmin); }
+.fx-full .band .stripe { position: absolute; inset: 0; border-top: 4px solid #fff; border-bottom: 4px solid #fff; background: linear-gradient(90deg, #6a3df0, #ff3d81 60%, #ffd400); }
+.fx-full.fever .band .stripe { background: linear-gradient(90deg, #ff4fd8, #ffe03c, #4be08c, #3cd2ff, #a064ff); }
+.fx-full .band.a { transform: rotate(-13deg) translateX(-130%); animation: bandA var(--d) cubic-bezier(.2,.9,.3,1) forwards; }
+.fx-full .band.b { top: 46%; transform: rotate(13deg) translateX(130%); animation: bandB var(--d) cubic-bezier(.2,.9,.3,1) forwards; }
+@keyframes bandA { 0% { transform: rotate(-13deg) translateX(-130%); } 18% { transform: rotate(-13deg) translateX(0); } 80% { transform: rotate(-13deg) translateX(0); } 100% { transform: rotate(-13deg) translateX(130%); } }
+@keyframes bandB { 0% { transform: rotate(13deg) translateX(130%); } 18% { transform: rotate(13deg) translateX(0); } 80% { transform: rotate(13deg) translateX(0); } 100% { transform: rotate(13deg) translateX(-130%); } }
+.fx-full .num { position: absolute; left: 50%; top: 40%; font-weight: 900; font-size: clamp(6.5rem, 36vw, 14rem); line-height: 1; color: #fff; -webkit-text-stroke: 10px var(--purple); paint-order: stroke fill; transform: translate(-50%,-50%); animation: numslam var(--d) cubic-bezier(.2,1.2,.3,1) forwards; }
+@keyframes numslam { 0% { opacity: 0; transform: translate(-50%,-50%) scale(3.4); } 18% { opacity: 1; transform: translate(-50%,-50%) scale(.9); } 28% { transform: translate(-50%,-50%) scale(1.06); } 38% { transform: translate(-50%,-50%) scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1); } }
+.fx-full .lab { position: absolute; left: 50%; top: 22%; font-weight: 900; font-size: 1.4rem; letter-spacing: .3em; color: #fff; text-shadow: 0 3px 0 var(--purple); transform: translateX(-50%); animation: dimfade var(--d) forwards; }
+.fx-full .txt { position: absolute; left: 0; right: 0; top: 60%; text-align: center; padding: 0 8px; font-weight: 900; font-size: clamp(2.2rem, 11vw, 3.6rem); color: #ffe45c; -webkit-text-stroke: 8px var(--purple); paint-order: stroke fill; animation: txtpop var(--d) cubic-bezier(.2,1.4,.3,1) forwards; }
+@keyframes txtpop { 0% { opacity: 0; transform: scale(.2) rotate(-6deg); } 22% { opacity: 1; transform: scale(1.12) rotate(2deg); } 32% { transform: scale(1) rotate(0); } 85% { opacity: 1; } 100% { opacity: 0; } }
+/* キリ番(特大・タップでスキップ) */
+.fx-overlay.fx-bigcut { background: transparent; padding: 0; display: block; animation: none; }
+.fx-bigcut .fx-full { pointer-events: none; }
+.fx-bigcut .fx-full.big .dim { background: rgba(25,10,70,.72); }
+.fx-bigcut .skiphint { position: absolute; left: 0; right: 0; bottom: 15%; text-align: center; font-weight: 800; font-size: .85rem; color: #fff; opacity: .85; }
+
+/* 外周の光(5 以上 / 20 以上は虹) */
+.fx-rim { position: fixed; inset: 0; z-index: 850; pointer-events: none; }
+.fx-rim.glow { box-shadow: inset 0 0 26px 8px rgba(255,200,40,.8); animation: rimpulse 1.1s ease-in-out infinite alternate; }
+.fx-rim.rainbow { overflow: hidden; padding: 9px; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); animation: rimpulse 1.4s ease-in-out infinite alternate; }
+.fx-rim .spin { position: absolute; left: 50%; top: 50%; width: 200vmax; height: 200vmax; margin: -100vmax 0 0 -100vmax; background: conic-gradient(#ff4fd8, #ffe03c, #4be08c, #3cd2ff, #a064ff, #ff4fd8); animation: spin 4s linear infinite; }
+@keyframes rimpulse { from { opacity: .4; } to { opacity: 1; } }
+
+/* フィーバー: 背景が虹色にゆっくりうねる(transform のみ) */
+.fx-fever-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; opacity: .6; }
+.fx-fever-bg .wave { position: absolute; left: 0; top: -10%; width: 200%; height: 120%; background: repeating-linear-gradient(100deg, #ffb3ec 0, #fff3a0 10%, #b6f5cf 20%, #a8e6ff 30%, #cbb2ff 40%, #ffb3ec 50%); animation: feverwave 7s linear infinite, feversway 3s ease-in-out infinite alternate; }
+@keyframes feverwave { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes feversway { from { margin-top: -3%; } to { margin-top: 3%; } }
+
+/* コンボ切れ: ガラスが割れる */
+.fx-glass { position: fixed; inset: 0; z-index: 958; pointer-events: none; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(6, 1fr); animation: glassfade 1.5s linear forwards; }
+.fx-glass .shard { background: linear-gradient(135deg, rgba(215,238,255,.55), rgba(255,255,255,.22)); box-shadow: inset 0 0 0 2px rgba(255,255,255,.8); opacity: 0; animation: shardin .2s ease-out forwards, sharddrop .75s ease-in forwards; animation-delay: 0s, calc(.7s + var(--dl)); }
+@keyframes shardin { to { opacity: 1; } }
+@keyframes sharddrop { 0% { transform: translate(0,0) rotate(0); opacity: 1; } 100% { transform: translate(var(--dx), 120vh) rotate(var(--rot)); opacity: 0; } }
+@keyframes glassfade { 0%, 90% { opacity: 1; } 100% { opacity: 0; } }
+.fx-glass .crack { position: absolute; inset: 0; width: 100%; height: 100%; }
+.fx-glass .crack polyline { fill: none; stroke: rgba(255,255,255,.95); stroke-width: .5; vector-effect: non-scaling-stroke; stroke-width: 2px; }
+.fx-glass .gtext { position: absolute; left: 0; right: 0; top: 34%; text-align: center; font-weight: 900; font-size: clamp(2rem, 9vw, 3rem); color: #fff; -webkit-text-stroke: 7px #2a3a6a; paint-order: stroke fill; animation: gtextin 1.3s ease-out forwards; padding: 0 10px; }
+.fx-glass .gtext small { display: block; margin-top: 8px; font-size: 1.05rem; -webkit-text-stroke: 5px #2a3a6a; }
+@keyframes gtextin { 0% { opacity: 0; transform: scale(1.3); } 15% { opacity: 1; transform: scale(1); } 85% { opacity: 1; } 100% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-ctext { animation: none; opacity: 1; }
 }

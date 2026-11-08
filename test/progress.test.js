@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { BASIC_DANS, ADVANCED_DANS, emptyStats } from '../js/logic.js';
 import {
-  xpForAnswer, xpNeeded, xpForLevel, levelInfo, comboTier, comboMilestone,
+  xpForAnswer, xpNeeded, xpForLevel, levelInfo,
   defaultProgress, applyAnswer, addXp, touchDay, dateKey, finishSession,
   isMastered, masteredDans, isCleared, CLEAR_TIME_MS,
   ACHIEVEMENTS, achievementStatus, evaluateAchievements, RARITIES,
@@ -42,21 +42,6 @@ test('レベル計算', () => {
   assert.ok(Math.abs(li.ratio - 37 / 75) < 1e-9);
   assert.equal(levelInfo(-5).level, 1);
   assert.equal(levelInfo(NaN).level, 1);
-});
-
-test('コンボの段階', () => {
-  assert.equal(comboTier(0).tier, 0);
-  assert.equal(comboTier(2).tier, 0);
-  assert.equal(comboTier(3).tier, 1);
-  assert.equal(comboTier(4).tier, 1);
-  assert.equal(comboTier(5).tier, 2);
-  assert.equal(comboTier(10).tier, 3);
-  assert.equal(comboTier(20).tier, 4);
-  assert.equal(comboTier(99).tier, 4);
-  for (let t = 1; t <= 4; t++) assert.ok(comboTier([0, 3, 5, 10, 20][t]).text.length > 0);
-  assert.equal(comboTier(10).text, '天才!?');
-  // ちょうど段階に届いた瞬間だけ
-  assert.deepEqual([3, 4, 5, 10, 11, 20, 21].map((c) => comboMilestone(c)), [1, 0, 2, 3, 0, 4, 0]);
 });
 
 test('回答の反映(正解・不正解・レベルアップ)', () => {

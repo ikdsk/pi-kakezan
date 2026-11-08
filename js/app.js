@@ -6,12 +6,14 @@ import {
 } from './logic.js';
 import {
   ACHIEVEMENTS, RARITY_LABELS, RARITY_BONUS_XP, CLEAR_TIME_MS, TIME_ATTACK_KEY,
-  levelInfo, comboTier, comboMilestone, applyAnswer, addXp, touchDay, dateKey, finishSession,
+  levelInfo, applyAnswer, addXp, touchDay, dateKey, finishSession,
   masteredDans, isMastered, isTimeCleared, achievementStatus, evaluateAchievements,
 } from './progress.js';
 import { createStorage } from './storage.js';
 import { createSound } from './sound.js';
 import { createFx } from './fx.js';
+import { createComboFx } from './combofx.js';
+import { comboStage, flameCount, comboEffects, effectsForMode, comboBreak } from './combo.js';
 
 const rng = Math.random;
 const app = document.getElementById('app');
@@ -21,7 +23,11 @@ try { ls = window.localStorage; } catch { ls = null; }
 const store = createStorage(ls);
 let data = store.load();
 const sound = createSound(data.settings.sound);
-const fx = createFx();
+const osReduced = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+/** えんしゅつ「ひかえめ」、または OS の「動きを減らす」のとき true */
+const isCalm = () => osReduced() || data.settings.fx === 'calm';
+const fx = createFx(isCalm);
+const comboFx = createComboFx({ fx, sound, isCalm });
 document.addEventListener('pointerdown', () => sound.unlock(), true); // iOS: 最初のタップで AudioContext を resume
 
 const RANGE_LABELS = { basic: 'きほん', both: 'きほん＋ はってん', advanced: 'はってん' };
@@ -29,6 +35,8 @@ const QUIZ_LENGTH = 10;
 const ADVANCE_MS = 900;
 const MODE_TITLES = { choice: '4たくクイズ', twotap: '2タップ', reverse: 'ぎゃくびき', time: 'タイムアタック', flash: 'フラッシュカード' };
 
+/** 連続正解(コンボ)は、まちがえるまでセッションをまたいで続く(リロードで 0)。20 以上のフィーバーに届くために必要。 */
+let comboCarry = 0;
 let session = null;
 let sessionSeq = 0;
 let timerId = null;
@@ -59,6 +67,7 @@ function stopTimer() {
 function mount(...nodes) {
   stopTimer();
   clearAdvance();
+  if (!session) comboFx.stopAll(); // クイズ中以外では、コンボ演出(外周の光・フィーバー・ビート)を止める
   app.replaceChildren(...nodes);
   window.scrollTo(0, 0);
 }
@@ -244,6 +253,15 @@ function showHome() {
             type: 'button', 'aria-pressed': String(range === key),
             onclick: () => { data.settings.range = key; persist(); showHome(); },
           }, label)))),
+    h('section', { class: 'panel' },
+      h('h2', {}, 'えんしゅつ'),
+      h('div', { class: 'seg two', role: 'group', 'aria-label': 'えんしゅつ' },
+        [['flashy', 'はで'], ['calm', 'ひかえめ']].map(([key, label]) =>
+          h('button', {
+            type: 'button', 'aria-pressed': String(data.settings.fx === key),
+            onclick: () => { data.settings.fx = key; persist(); showHome(); },
+          }, label))),
+      osReduced() ? h('p', { class: 'muted', style: 'margin:8px 0 0;font-size:.8rem' }, 'この たんまつは「うごきを へらす」せっていなので、ひかえめで うごくよ') : null),
     h('nav', { class: 'menu' },
       menuItem('m1', 'ひょう', 'こたえを かくして おぼえる', showTable),
       menuItem('m2', 'フラッシュカード', 'めくって たしかめる', startFlash),
@@ -299,6 +317,7 @@ function showTable() {
 
 // ---------- フラッシュカード(じぶんで さいてん。せいせきには いれない) ----------
 function startFlash() {
+  comboFx.stopAll();
   touchToday();
   const queue = buildQueue(dansForRange(data.settings.range), QUIZ_LENGTH, rng);
   session = { id: ++sessionSeq, mode: 'flash', queue, i: 0, correct: 0, xpGained: 0, bestCombo: 0, flipped: false };
@@ -346,16 +365,18 @@ function progressBar(s) {
 
 // ---------- クイズ共通 ----------
 function startQuiz(mode) {
+  comboFx.stopAll();
   touchToday();
   const dans = mode === 'time' ? dansForRange('basic') : dansForRange(data.settings.range);
   const queue = buildQueue(dans, mode === 'time' ? 9 : QUIZ_LENGTH, rng);
   session = {
-    id: ++sessionSeq, mode, queue, pool: dans, i: 0, correct: 0, combo: 0, bestCombo: 0, xpGained: 0,
+    id: ++sessionSeq, mode, queue, pool: dans, i: 0, correct: 0, combo: comboCarry, bestCombo: comboCarry, xpGained: 0,
     answered: false, advanced: false, last: null, current: null, qStart: 0, elapsed: 0,
     pickedInt: null, pickedFrac: null, shownRatio: lv().ratio, shownLevel: lv().level, bump: false,
   };
   prepareQuestion();
   renderQuiz();
+  if (comboCarry >= 5) comboFx.sustain(effectsForMode(comboEffects(comboCarry), isCalm() ? 'calm' : 'flashy')); // つづきのコンボなら外周の光・フィーバーを再開
 }
 
 function prepareQuestion() {
@@ -387,9 +408,11 @@ function tickTimer() {
 
 function hud(s) {
   const li = lv();
-  const tier = comboTier(s.combo);
-  const combo = h('div', { class: `combo t${tier.tier}${s.bump ? ' bump' : ''}`, 'aria-live': 'off' },
-    s.combo >= 2 ? `🔥 ${s.combo} コンボ` : '');
+  const flames = flameCount(s.combo);
+  const combo = h('div', { class: `combo heat${comboStage(s.combo)}${s.bump ? ' bump' : ''}`, 'aria-label': `${s.combo} れんぞく` },
+    flames ? h('span', { class: 'fl', 'aria-hidden': 'true' }, '🔥'.repeat(flames)) : null,
+    h('span', { class: 'cn' }, String(s.combo)),
+    h('span', { class: 'cl' }, 'COMBO'));
   const startRatio = s.shownLevel === li.level ? s.shownRatio : 0;
   const fill = h('i', { style: `width:${startRatio * 100}%` });
   requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = `${li.ratio * 100}%`; }));
@@ -503,10 +526,12 @@ function finishAnswer(ok, where, picked) {
   s.answered = true;
   s.last = { ok, picked, xp: 0 };
   s.elapsed += ms;
+  const prevCombo = s.combo;
   s.combo = ok ? s.combo + 1 : 0;
   s.bestCombo = Math.max(s.bestCombo, s.combo);
+  comboCarry = s.combo;
   if (ok) s.correct++;
-  s.bump = ok && s.combo >= 2;
+  s.bump = ok;
 
   const lb = lv().level;
   data.stats = recordAnswer(data.stats, n, ok);
@@ -517,7 +542,7 @@ function finishAnswer(ok, where, picked) {
   settle(lb); // 実績・レベルアップ・クリア(保存もここ)
 
   renderQuiz();
-  celebrate(ok, r.xp, where);
+  celebrate(ok, r.xp, where, prevCombo);
   if (ok) {
     const tok = s.id;
     advanceTimer = setTimeout(() => {
@@ -527,30 +552,22 @@ function finishAnswer(ok, where, picked) {
   }
 }
 
-function celebrate(ok, xp, where) {
+function celebrate(ok, xp, where, prevCombo) {
   const s = session;
   if (!ok) {
     sound.wrong();
-    fx.shake();
+    comboFx.stopFever();
+    comboFx.setRim(null);
     fx.popup('どんまい!', where.x, where.y - 10, 'bad');
+    const br = comboBreak(prevCombo, s.bestCombo);
+    if (br) comboFx.breakGlass(br, where); // 3 以上から切れたら「コンボ ストップ…」のガラス割れ
+    else comboFx.miss();
     return;
   }
-  const tier = comboMilestone(s.combo);
-  sound.correct(s.combo);
-  fx.flash(tier ? 'rgba(255,230,90,0.5)' : 'rgba(120,255,160,0.3)');
-  const counts = [22, 50, 100, 160, 240];
-  fx.confetti(where.x, where.y, counts[tier], 1 + tier * 0.12);
   fx.popup(`+${xp.total}`, where.x, where.y - 10);
   if (xp.speedBonus) fx.popup(`⚡ はやい! +${xp.speedBonus}`, where.x, where.y + 28, 'xp2');
-  if (tier) {
-    const t = comboTier(s.combo);
-    fx.banner(`${s.combo} ${t.text}`, tier);
-    setTimeout(() => sound.combo(tier), 130);
-    if (tier >= 3) {
-      fx.confetti(window.innerWidth * 0.1, window.innerHeight * 0.75, 70, 1.4);
-      fx.confetti(window.innerWidth * 0.9, window.innerHeight * 0.75, 70, 1.4);
-    }
-  }
+  // どの演出を出すかは combo.js の設計表で決まる(ひかえめのときは文字カットインだけ)
+  comboFx.play(effectsForMode(comboEffects(s.combo), isCalm() ? 'calm' : 'flashy'), where);
 }
 
 function feedbackBox(n) {
@@ -591,6 +608,7 @@ function endSession() {
 }
 
 function showResult(s, timeInfo) {
+  comboFx.stopAll();
   const total = s.queue.length;
   const again = () => (s.mode === 'flash' ? startFlash() : startQuiz(s.mode));
   const nodes = [topbar('けっか')];

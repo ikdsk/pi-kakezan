@@ -1,9 +1,9 @@
-// 画面演出: 紙吹雪(canvas)・フラッシュ・シェイク・ポップアップ・バナー・トースト・全画面オーバーレイ。
-// 外部ライブラリなし。prefers-reduced-motion のときは動きを弱める(フラッシュ・シェイクなし、紙吹雪は少なめ)。
+// 画面演出の部品: 紙吹雪(canvas)・ポップアップ・トースト・全画面オーバーレイ。コンボ演出は combofx.js。
+// 外部ライブラリなし。ひかえめ / prefers-reduced-motion のときは紙吹雪を少なめにする。
 const COLORS = ['#ff3d81', '#ffd400', '#2ec4ff', '#3ddc84', '#a066ff', '#ff8a00'];
 const MAX_PARTICLES = 320;
 
-const reduced = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const osReduced = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const el = (tag, cls, text) => {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -11,7 +11,9 @@ const el = (tag, cls, text) => {
   return e;
 };
 
-export function createFx() {
+/** isCalm: 「ひかえめ」設定のとき true を返す関数(OS の動き軽減は自動で見る)。 */
+export function createFx(isCalm = () => false) {
+  const reduced = () => osReduced() || isCalm();
   // ---------- 紙吹雪 ----------
   let canvas = null;
   let cx = null;
@@ -80,39 +82,13 @@ export function createFx() {
     if (!raf) raf = requestAnimationFrame(frame);
   }
 
-  // ---------- 画面フラッシュ・シェイク ----------
-  function flash(color = 'rgba(255,255,255,0.45)') {
-    if (reduced()) return;
-    const f = el('div', 'fx-flash');
-    f.style.background = color;
-    document.body.append(f);
-    setTimeout(() => f.remove(), 400);
-  }
-
-  function shake() {
-    if (reduced()) return;
-    const app = document.getElementById('app');
-    if (!app) return;
-    app.classList.remove('shake');
-    void app.offsetWidth; // アニメーションを最初から
-    app.classList.add('shake');
-    setTimeout(() => app.classList.remove('shake'), 450);
-  }
-
-  // ---------- ポップアップ(+10 など)・バナー ----------
+  // ---------- ポップアップ(+10 など) ----------
   function popup(text, x, y, cls = '') {
     const p = el('div', `fx-pop ${cls}`, text);
     p.setAttribute('aria-hidden', 'true');
     p.style.left = `${Math.min(Math.max(x, 90), window.innerWidth - 90)}px`; p.style.top = `${y}px`;
     document.body.append(p);
     setTimeout(() => p.remove(), 1000);
-  }
-
-  function banner(text, tier = 1) {
-    const b = el('div', `fx-banner tier-${tier}`, text);
-    b.setAttribute('aria-hidden', 'true');
-    document.body.append(b);
-    setTimeout(() => b.remove(), 1000);
   }
 
   // ---------- トースト(実績解除) ----------
@@ -189,7 +165,7 @@ export function createFx() {
   }
 
   return {
-    confetti, rain, flash, shake, popup, banner, toast, overlay,
+    confetti, rain, popup, toast, overlay,
     isOverlayOpen: () => overlayOpen || overlayQueue.length > 0,
     /** オーバーレイが無くなったら cb を呼ぶ(いま無ければ即時)。 */
     whenIdle(cb) { if (overlayOpen || overlayQueue.length) idleCallbacks.push(cb); else cb(); },

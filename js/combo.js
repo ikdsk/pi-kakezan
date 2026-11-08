@@ -7,8 +7,10 @@ export const STAGE_FROM = [0, 1, 3, 5, 10, 20];
 export const BIG_COMBOS = [10, 20, 30, 50, 100];
 /** シェイクの強さの順(弱→強)。 */
 export const SHAKE_RANK = ['none', 'small', 'medium', 'strong', 'huge'];
-/** 光過敏への配慮: 全画面フラッシュは 1 秒に 3 回まで、間隔 340ms 以上。 */
-export const FLASH_LIMIT = { maxPerSec: 3, minGapMs: 340 };
+/** 光過敏への配慮: 全画面フラッシュは 1 秒に 2 回まで(基準の 3 回より厳しく)、間隔 420ms 以上。 */
+export const FLASH_LIMIT = { maxPerSec: 2, minGapMs: 420 };
+/** 同じ回答のなかで、最初のフラッシュのあとに背景ティントを出すまでの時間(間隔の下限より少し長く)。 */
+export const TINT_DELAY_MS = 440;
 /** 通常の演出は自動送り(0.9 秒)に収める / キリ番だけ最大 2 秒。 */
 export const NORMAL_MS = 800;
 export const BIG_MS = 2000;

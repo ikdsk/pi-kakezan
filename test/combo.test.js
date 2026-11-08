@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  BIG_COMBOS, STAGE_FROM, FLASH_LIMIT, SHAKE_RANK,
+  BIG_COMBOS, STAGE_FROM, FLASH_LIMIT, TINT_DELAY_MS, SHAKE_RANK,
   comboStage, isBigCombo, isFever, flameCount, comboEffects, effectsForMode, comboBreak,
   allowFlash, recordFlash,
 } from '../js/combo.js';
@@ -187,23 +187,26 @@ test('コンボ切れ(ガラス演出)', () => {
   assert.equal(comboBreak(4, 2).best, 4, '最高コンボは今のコンボ以上');
 });
 
-test('フラッシュの頻度制限(1秒に3回まで・間隔を空ける)', () => {
-  assert.deepEqual(FLASH_LIMIT, { maxPerSec: 3, minGapMs: 340 });
+test('フラッシュの頻度制限(1秒に2回まで・間隔を空ける)', () => {
+  assert.deepEqual(FLASH_LIMIT, { maxPerSec: 2, minGapMs: 420 });
+  assert.ok(FLASH_LIMIT.maxPerSec <= 3, '基準(1秒に3回以下)より厳しい');
+  assert.ok(TINT_DELAY_MS >= FLASH_LIMIT.minGapMs, '同じ回答の 2 回目のフラッシュは間隔を満たす');
   assert.equal(allowFlash([], 0), true);
   assert.equal(allowFlash([0], 100), false);
-  assert.equal(allowFlash([0], 340), true);
-  assert.equal(allowFlash([0, 340, 680], 700), false);
-  assert.equal(allowFlash([0, 340, 680], 1020), true);
-  assert.deepEqual(recordFlash([0, 340, 680], 1020), [340, 680, 1020]);
-  // どんなタイミングで要求しても、どの1秒でも3回以内
-  for (const step of [7, 50, 120, 333, 341]) {
+  assert.equal(allowFlash([0], 419), false);
+  assert.equal(allowFlash([0], 420), true);
+  assert.equal(allowFlash([0, 440], 900), false, '1 秒に 2 回まで');
+  assert.equal(allowFlash([0, 440], 1001), true);
+  assert.deepEqual(recordFlash([0, 440], 1001), [440, 1001]);
+  // どんなタイミングで要求しても、どの1秒でも上限以内
+  for (const step of [7, 50, 120, 333, 421]) {
     let hist = []; const accepted = [];
     for (let t = 0; t < 20000; t += step) {
       if (allowFlash(hist, t)) { hist = recordFlash(hist, t); accepted.push(t); }
     }
     for (let i = 0; i < accepted.length; i++) {
       const inWin = accepted.filter((x) => x >= accepted[i] && x < accepted[i] + 1000).length;
-      assert.ok(inWin <= 3, `step ${step}: ${inWin} flashes in 1s`);
+      assert.ok(inWin <= FLASH_LIMIT.maxPerSec, `step ${step}: ${inWin} flashes in 1s`);
     }
   }
 });
