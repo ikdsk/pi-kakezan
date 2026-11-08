@@ -6,9 +6,11 @@ import { defaultProgress, ACHIEVEMENTS } from './progress.js';
 export const KEY = 'pi-kakezan:v2';
 export const LEGACY_KEY = 'pi-kakezan:v1';
 export const VERSION = 2;
+/** えんしゅつ: はで(flashy)/ ひかえめ(calm) */
+export const FX_MODES = ['flashy', 'calm'];
 
 function defaults() {
-  return { version: VERSION, settings: { range: 'basic', sound: true }, stats: emptyStats(), records: {}, progress: defaultProgress() };
+  return { version: VERSION, settings: { range: 'basic', sound: true, fx: 'flashy' }, stats: emptyStats(), records: {}, progress: defaultProgress() };
 }
 
 const isCount = (v) => Number.isInteger(v) && v >= 0;
@@ -61,6 +63,7 @@ function sanitizeV2(raw) {
   if (!isObj(raw)) return d;
   if (RANGES.includes(raw.settings?.range)) d.settings.range = raw.settings.range;
   if (typeof raw.settings?.sound === 'boolean') d.settings.sound = raw.settings.sound;
+  if (FX_MODES.includes(raw.settings?.fx)) d.settings.fx = raw.settings.fx;
   sanitizeStats(raw, d);
   sanitizeProgress(raw.progress, d);
   return d;

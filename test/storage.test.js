@@ -17,6 +17,7 @@ test('初期状態', () => {
   assert.equal(d.version, 2);
   assert.equal(d.settings.range, 'basic');
   assert.equal(d.settings.sound, true);
+  assert.equal(d.settings.fx, 'flashy', 'えんしゅつの既定は はで');
   assert.deepEqual(d.stats.byDan, {});
   assert.deepEqual(d.stats.recentMistakes, []);
   assert.deepEqual(d.records, {});
@@ -31,6 +32,7 @@ test('保存して読み戻せる', () => {
   const d = st.load();
   d.settings.range = 'both';
   d.settings.sound = false;
+  d.settings.fx = 'calm';
   d.stats.byDan[7] = { correct: 2, total: 3 };
   d.records['time-attack'] = 41000;
   d.progress.xp = 123;
@@ -44,6 +46,7 @@ test('保存して読み戻せる', () => {
   const d2 = createStorage(ls).load();
   assert.equal(d2.settings.range, 'both');
   assert.equal(d2.settings.sound, false);
+  assert.equal(d2.settings.fx, 'calm');
   assert.deepEqual(d2.stats.byDan[7], { correct: 2, total: 3 });
   assert.equal(d2.records['time-attack'], 41000);
   assert.equal(d2.progress.xp, 123);
@@ -101,7 +104,7 @@ test('壊れた JSON でも初期値に戻る(v2・v1とも)', () => {
 test('形の崩れた値は取り除く', () => {
   const bad = JSON.stringify({
     version: 2,
-    settings: { range: 'nope', sound: 'yes' },
+    settings: { range: 'nope', sound: 'yes', fx: 'extreme' },
     stats: { byDan: { 7: { correct: 'a', total: 3 }, 8: { correct: 5, total: 2 }, 9: { correct: 1, total: 2 } }, recentMistakes: 'x' },
     records: { 'time-attack': -5, foo: 'bar' },
     progress: { xp: -3, totalCorrect: 'a', bestCombo: 2.5, modePlays: { choice: -1, time: 3 }, unlocked: { 'first-correct': 'x', 'combo-5': 123 },
@@ -110,6 +113,7 @@ test('形の崩れた値は取り除く', () => {
   const d = createStorage(fakeLocalStorage({ [KEY]: bad })).load();
   assert.equal(d.settings.range, 'basic');
   assert.equal(d.settings.sound, true);
+  assert.equal(d.settings.fx, 'flashy');
   assert.equal(d.stats.byDan[7], undefined);
   assert.equal(d.stats.byDan[8], undefined);
   assert.deepEqual(d.stats.byDan[9], { correct: 1, total: 2 });
@@ -148,6 +152,7 @@ test('リセット: 成績・記録・レベル・実績を消し、設定は残
   const d = st.load();
   d.settings.range = 'advanced';
   d.settings.sound = false;
+  d.settings.fx = 'calm';
   d.stats.byDan[7] = { correct: 1, total: 1 };
   d.progress.xp = 500;
   d.progress.unlocked['first-correct'] = 1;
@@ -161,6 +166,7 @@ test('リセット: 成績・記録・レベル・実績を消し、設定は残
   assert.deepEqual(d2.progress.unlocked, {});
   assert.equal(d2.settings.range, 'advanced');
   assert.equal(d2.settings.sound, false);
+  assert.equal(d2.settings.fx, 'calm');
 });
 
 test('リセットすると古い v1 データも復活しない', () => {
