@@ -4,7 +4,7 @@
 // 音のノードは使い捨て: 鳴り終わったら必ず disconnect する(長時間でも増え続けない)。
 import { patternAt, stepSeconds, isBoundary, midiToHz, LAYER_KEYS, STEPS_PER_BAR } from './bgm.js';
 
-export const DEFAULT_LEVEL = 0.34; // BGM 全体の音量(効果音より控えめ)
+export const DEFAULT_LEVEL = 0.24; // BGM 全体の音量(効果音より控えめ)
 
 export function createBgmEngine(ctx, { out = ctx.destination, level = DEFAULT_LEVEL } = {}) {
   // ---------- 常設のノード(数個だけ) ----------
@@ -211,7 +211,7 @@ export function createBgmEngine(ctx, { out = ctx.destination, level = DEFAULT_LE
     duck(t) {
       if (!enabled) return;
       master.gain.cancelScheduledValues(t);
-      master.gain.setTargetAtTime(masterLevel * 0.55, t, 0.015);
+      master.gain.setTargetAtTime(masterLevel * 0.5, t, 0.015);
       master.gain.setTargetAtTime(masterLevel, t + 0.16, 0.12);
     },
     /** コンボ切れ: フィルターを一瞬閉じてから戻す。 */
