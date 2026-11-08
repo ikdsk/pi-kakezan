@@ -18,6 +18,7 @@ test('初期状態', () => {
   assert.equal(d.settings.range, 'basic');
   assert.equal(d.settings.sound, true);
   assert.equal(d.settings.fx, 'flashy', 'えんしゅつの既定は はで');
+  assert.equal(d.settings.bgm, true, 'BGM の既定は オン');
   assert.deepEqual(d.stats.byDan, {});
   assert.deepEqual(d.stats.recentMistakes, []);
   assert.deepEqual(d.records, {});
@@ -33,6 +34,7 @@ test('保存して読み戻せる', () => {
   d.settings.range = 'both';
   d.settings.sound = false;
   d.settings.fx = 'calm';
+  d.settings.bgm = false;
   d.stats.byDan[7] = { correct: 2, total: 3 };
   d.records['time-attack'] = 41000;
   d.progress.xp = 123;
@@ -47,6 +49,7 @@ test('保存して読み戻せる', () => {
   assert.equal(d2.settings.range, 'both');
   assert.equal(d2.settings.sound, false);
   assert.equal(d2.settings.fx, 'calm');
+  assert.equal(d2.settings.bgm, false);
   assert.deepEqual(d2.stats.byDan[7], { correct: 2, total: 3 });
   assert.equal(d2.records['time-attack'], 41000);
   assert.equal(d2.progress.xp, 123);
@@ -54,6 +57,19 @@ test('保存して読み戻せる', () => {
   assert.deepEqual(d2.progress.streak, { last: '2026-11-08', count: 2, best: 4 });
   assert.equal(d2.progress.flags.early, true);
   assert.equal(d2.progress.cleared, 1700000000001);
+});
+
+test('効果音オフ・BGM オンなど、組み合わせを保存できる', () => {
+  for (const [sound, bgm] of [[false, true], [true, false], [false, false], [true, true]]) {
+    const ls = fakeLocalStorage();
+    const st = createStorage(ls);
+    const d = st.load();
+    d.settings.sound = sound; d.settings.bgm = bgm;
+    st.save(d);
+    const d2 = createStorage(ls).load();
+    assert.equal(d2.settings.sound, sound);
+    assert.equal(d2.settings.bgm, bgm);
+  }
 });
 
 test('v1 のデータを引き継ぐ(成績・ベストタイム・範囲)', () => {
@@ -104,7 +120,7 @@ test('壊れた JSON でも初期値に戻る(v2・v1とも)', () => {
 test('形の崩れた値は取り除く', () => {
   const bad = JSON.stringify({
     version: 2,
-    settings: { range: 'nope', sound: 'yes', fx: 'extreme' },
+    settings: { range: 'nope', sound: 'yes', fx: 'extreme', bgm: 'maybe' },
     stats: { byDan: { 7: { correct: 'a', total: 3 }, 8: { correct: 5, total: 2 }, 9: { correct: 1, total: 2 } }, recentMistakes: 'x' },
     records: { 'time-attack': -5, foo: 'bar' },
     progress: { xp: -3, totalCorrect: 'a', bestCombo: 2.5, modePlays: { choice: -1, time: 3 }, unlocked: { 'first-correct': 'x', 'combo-5': 123 },
@@ -114,6 +130,7 @@ test('形の崩れた値は取り除く', () => {
   assert.equal(d.settings.range, 'basic');
   assert.equal(d.settings.sound, true);
   assert.equal(d.settings.fx, 'flashy');
+  assert.equal(d.settings.bgm, true);
   assert.equal(d.stats.byDan[7], undefined);
   assert.equal(d.stats.byDan[8], undefined);
   assert.deepEqual(d.stats.byDan[9], { correct: 1, total: 2 });
