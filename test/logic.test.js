@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {
   BASIC_DANS, ADVANCED_DANS, dansForRange,
   productHundredths, formatHundredths, answerText, questionText,
-  normalizeInput, isCorrectInput,
+  answerParts, partsText, makeIntChoices, makeFracChoices, isCorrectTwoTap,
   makeChoices, makeReverseQuestion, makeReverseChoices,
-  buildQueue, buildWeakQueue,
-  emptyStats, recordAnswer, accuracy, weakDans, bestTime, updateBestTime,
+  buildQueue,
+  emptyStats, recordAnswer, accuracy, bestTime, updateBestTime,
 } from '../js/logic.js';
 
 // 決定的な乱数(線形合同法)
@@ -52,34 +52,6 @@ test('整形: 末尾の0を省略', () => {
 
 test('問題文', () => {
   assert.equal(questionText(7), '3.14 × 7');
-});
-
-test('入力の同値判定', () => {
-  assert.equal(isCorrectInput(10, '31.40'), true);
-  assert.equal(isCorrectInput(10, '31.4'), true);
-  assert.equal(isCorrectInput(10, ' 31.4 '), true);
-  assert.equal(isCorrectInput(10, '031.4'), true);
-  assert.equal(isCorrectInput(50, '157'), true);
-  assert.equal(isCorrectInput(50, '157.00'), true);
-  assert.equal(isCorrectInput(50, '157.'), true);
-  assert.equal(isCorrectInput(7, '21.98'), true);
-  assert.equal(isCorrectInput(7, '21.9'), false);
-  assert.equal(isCorrectInput(7, '2198'), false);
-  assert.equal(isCorrectInput(25, '78.50'), true);
-  assert.equal(isCorrectInput(25, '78.501'), false);
-});
-
-test('不正な入力は例外なしで不正解', () => {
-  for (const bad of ['.', '', '  ', '..', '1.2.3', 'abc', '-3', null, undefined, 12]) {
-    assert.doesNotThrow(() => isCorrectInput(7, bad));
-    assert.equal(isCorrectInput(7, bad), false, String(bad));
-  }
-  assert.equal(normalizeInput('.'), null);
-  assert.equal(normalizeInput(''), null);
-  assert.equal(normalizeInput('31.40'), '31.4');
-  assert.equal(normalizeInput('.5'), '0.5');
-  assert.equal(normalizeInput('0'), '0');
-  assert.equal(normalizeInput('0.0'), '0');
 });
 
 test('4択: 4つ・重複なし・正解を含む(全段、複数の乱数)', () => {
@@ -169,26 +141,6 @@ test('直近の間違いは上限つき', () => {
   assert.ok(s.recentMistakes.length <= 20);
 });
 
-test('にがて抽出', () => {
-  let s = emptyStats();
-  for (let i = 0; i < 4; i++) s = recordAnswer(s, 7, i === 0, i); // 25%
-  for (let i = 0; i < 4; i++) s = recordAnswer(s, 8, i < 2, i);   // 50%
-  for (let i = 0; i < 4; i++) s = recordAnswer(s, 9, true, i);    // 100%
-  assert.deepEqual(weakDans(s, BASIC_DANS), [7, 8]);
-  assert.deepEqual(weakDans(s, [8, 9]), [8]);
-  assert.deepEqual(weakDans(emptyStats(), BASIC_DANS), []);
-});
-
-test('にがて優先キュー', () => {
-  let s = emptyStats();
-  for (let i = 0; i < 4; i++) s = recordAnswer(s, 7, false, i);
-  const q = buildWeakQueue(s, BASIC_DANS, 10, seeded(1));
-  assert.equal(q.length, 10);
-  assert.ok(q.every((n) => n === 7));
-  // にがてがなければ空
-  assert.deepEqual(buildWeakQueue(emptyStats(), BASIC_DANS, 10, seeded(1)), []);
-});
-
 test('ベストタイム', () => {
   assert.equal(bestTime({}), null);
   let t = updateBestTime({}, 'time-attack', 52000);
@@ -200,4 +152,87 @@ test('ベストタイム', () => {
   assert.equal(t.result.isBest, true);
   assert.equal(t.result.previous, 52000);
   assert.equal(bestTime(t.records, 'time-attack'), 40000);
+});
+
+// ---------- 2タップ回答(整数部・小数部の4択) ----------
+
+test('答えの整数部と小数部に分ける', () => {
+  assert.deepEqual(answerParts(7), { int: 21, frac: '98' });
+  assert.deepEqual(answerParts(10), { int: 31, frac: '4' });
+  assert.deepEqual(answerParts(25), { int: 78, frac: '5' });
+  assert.deepEqual(answerParts(5), { int: 15, frac: '7' });
+  assert.deepEqual(answerParts(1), { int: 3, frac: '14' });
+  // 小数部がない答え(314×50=157, 314×100=314)
+  assert.deepEqual(answerParts(50), { int: 157, frac: '' });
+  assert.deepEqual(answerParts(100), { int: 314, frac: '' });
+  for (const n of ALL) assert.equal(partsText(answerParts(n)), answerText(n));
+  assert.equal(partsText({ int: 31, frac: '4' }), '31.4');
+  assert.equal(partsText({ int: 157, frac: '' }), '157');
+});
+
+test('2タップ: 整数部の4択は4つ・重複なし・正解を含む(全段)', () => {
+  for (const n of [...ALL, 50, 100]) {
+    for (let seed = 1; seed <= 30; seed++) {
+      const c = makeIntChoices(n, seeded(seed), ALL);
+      assert.equal(c.length, 4);
+      assert.equal(new Set(c).size, 4, `${n}: ${c}`);
+      assert.ok(c.includes(answerParts(n).int), `${n}: ${c}`);
+      for (const v of c) assert.ok(Number.isInteger(v) && v >= 1, `${n}: ${c}`);
+    }
+  }
+});
+
+test('2タップ: 整数部の紛らわしい選択肢(隣の段・±1・±3)', () => {
+  const seen = new Set();
+  for (let seed = 1; seed <= 200; seed++) for (const v of makeIntChoices(7, seeded(seed), BASIC_DANS)) seen.add(v);
+  assert.ok(seen.has(18) || seen.has(25), '隣の段の整数部');
+  assert.ok(seen.has(20) || seen.has(22), '±1');
+  assert.ok(seen.has(18) || seen.has(24), '±3');
+});
+
+test('2タップ: 小数部の4択は4つ・重複なし・正解を含む(全段)', () => {
+  for (const n of [...ALL, 50, 100]) {
+    for (let seed = 1; seed <= 30; seed++) {
+      const c = makeFracChoices(n, seeded(seed), ALL);
+      assert.equal(c.length, 4);
+      assert.equal(new Set(c).size, 4, `${n}: ${c}`);
+      assert.ok(c.includes(answerParts(n).frac), `${n}: ${JSON.stringify(c)}`);
+      for (const v of c) assert.match(v, /^(|[1-9]|\d[1-9])$/, `frac "${v}"`);
+    }
+  }
+});
+
+test('2タップ: 小数部の選択肢は他の段の小数部を使う', () => {
+  const others = new Set(BASIC_DANS.map((n) => answerParts(n).frac));
+  const seen = new Set();
+  for (let seed = 1; seed <= 100; seed++) for (const v of makeFracChoices(7, seeded(seed), BASIC_DANS)) seen.add(v);
+  const fromOthers = [...seen].filter((v) => others.has(v));
+  assert.ok(fromOthers.length >= 5, [...seen].join());
+});
+
+test('2タップ: 小数部なしの答え(.0)を扱える', () => {
+  const c = makeFracChoices(50, seeded(3), ALL);
+  assert.ok(c.includes(''));
+  assert.equal(new Set(c).size, 4);
+  assert.equal(isCorrectTwoTap(50, 157, ''), true);
+  assert.equal(isCorrectTwoTap(50, 157, '5'), false);
+});
+
+test('2タップ: 判定', () => {
+  assert.equal(isCorrectTwoTap(7, 21, '98'), true);
+  assert.equal(isCorrectTwoTap(7, 21, '84'), false);
+  assert.equal(isCorrectTwoTap(7, 18, '98'), false);
+  assert.equal(isCorrectTwoTap(10, 31, '4'), true);
+  assert.equal(isCorrectTwoTap(10, 31, '40'), false); // 受験式の正規形のみ(選択肢は正規形で出る)
+  assert.equal(isCorrectTwoTap(7, null, '98'), false);
+  assert.equal(isCorrectTwoTap(7, 21, null), false);
+});
+
+test('2タップ: 正解の位置がかたよらない', () => {
+  const pi = new Set(); const pf = new Set();
+  for (let seed = 1; seed <= 60; seed++) {
+    pi.add(makeIntChoices(7, seeded(seed), BASIC_DANS).indexOf(21));
+    pf.add(makeFracChoices(7, seeded(seed), BASIC_DANS).indexOf('98'));
+  }
+  assert.ok(pi.size >= 3 && pf.size >= 3);
 });

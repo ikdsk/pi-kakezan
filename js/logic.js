@@ -4,7 +4,6 @@
 export const BASIC_DANS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 export const ADVANCED_DANS = [12, 15, 16, 18, 24, 25, 36, 49, 64, 81];
 export const RANGES = ['basic', 'both', 'advanced'];
-export const WEAK_THRESHOLD = 0.8;
 export const MAX_RECENT_MISTAKES = 20;
 
 export function dansForRange(range) {
@@ -33,27 +32,6 @@ export function answerText(n) {
 
 export function questionText(n) {
   return `3.14 × ${n}`;
-}
-
-// ---------- 入力の正規化と判定 ----------
-
-/** 入力文字列を受験式の正規形("31.40"→"31.4")にする。数として成り立たなければ null。 */
-export function normalizeInput(raw) {
-  if (typeof raw !== 'string') return null;
-  const s = raw.normalize('NFKC').trim();
-  const m = /^(\d*)(?:\.(\d*))?$/.exec(s);
-  if (!m) return null;
-  const intPart = m[1] ?? '';
-  const fracPart = m[2] ?? '';
-  if (intPart === '' && fracPart === '') return null; // "" や "." だけ
-  const int = intPart.replace(/^0+(?=\d)/, '') || '0';
-  const frac = fracPart.replace(/0+$/, '');
-  return frac ? `${int}.${frac}` : int;
-}
-
-export function isCorrectInput(n, raw) {
-  const v = normalizeInput(raw);
-  return v !== null && v === answerText(n);
 }
 
 // ---------- 乱数ヘルパー ----------
@@ -139,6 +117,61 @@ export function makeReverseQuestion(n, rng, pool = BASIC_DANS) {
   return { n, productText: answerText(n), choices: makeReverseChoices(n, rng, pool) };
 }
 
+// ---------- 2タップ回答(整数部 → 小数部の4択) ----------
+
+/** 答えを整数部と小数部に分ける。小数部は末尾0なしの文字列で、無ければ ''(.0 のこと)。 */
+export function answerParts(n) {
+  const h = productHundredths(n);
+  return { int: Math.floor(h / 100), frac: String(h % 100).padStart(2, '0').replace(/0+$/, '') };
+}
+
+export function partsText({ int, frac }) {
+  return frac ? `${int}.${frac}` : String(int);
+}
+
+export function isCorrectTwoTap(n, int, frac) {
+  if (!Number.isInteger(int) || typeof frac !== 'string') return false;
+  const p = answerParts(n);
+  return int === p.int && frac === p.frac;
+}
+
+function pickThree(groups, rng, valid, fallback) {
+  const shuffled = groups.map((g) => shuffle(g.filter(valid), rng));
+  const picked = [];
+  const add = (v) => { if (valid(v) && !picked.includes(v)) picked.push(v); };
+  for (const g of shuffled) { if (g.length) add(g[0]); }
+  for (const v of shuffle(shuffled.flat(), rng)) { if (picked.length < 3) add(v); }
+  for (let k = 1; picked.length < 3; k++) add(fallback(k));
+  return picked.slice(0, 3);
+}
+
+/** 整数部の4択(数値4つ・重複なし・正解を含む)。隣の段の整数部、±1、±3 など。 */
+export function makeIntChoices(n, rng, pool = BASIC_DANS) {
+  const c = answerParts(n).int;
+  const valid = (v) => Number.isInteger(v) && v >= 1 && v !== c;
+  const neighbors = [...neighborsInPool(n, pool), n - 1, n + 1].filter((m) => m > 0).map((m) => answerParts(m).int);
+  const near = [c - 1, c + 1];
+  const mid = [c - 3, c + 3, c - 2, c + 2];
+  const picked = pickThree([neighbors, near, mid], rng, valid, (k) => c + 3 + k);
+  return shuffle([c, ...picked], rng);
+}
+
+function swapFrac(f) {
+  return f.length === 2 && f[0] !== f[1] && f[0] !== '0' ? [f[1] + f[0]] : [];
+}
+
+/** 小数部の4択(文字列4つ・重複なし・正解を含む)。他の段の小数部が中心。'' は「なし(.0)」。 */
+export function makeFracChoices(n, rng, pool = BASIC_DANS) {
+  const c = answerParts(n).frac;
+  const valid = (v) => typeof v === 'string' && v !== c && /^(|[1-9]|\d[1-9])$/.test(v);
+  const fracOf = (m) => answerParts(m).frac;
+  const near = [...neighborsInPool(n, pool), n - 1, n + 1].filter((m) => m > 0 && m !== n).map(fracOf);
+  const others = [...new Set(pool)].filter((m) => m !== n).map(fracOf);
+  const swaps = swapFrac(c);
+  const picked = pickThree([near, others, swaps], rng, valid, (k) => String(10 + ((k * 17 + 3) % 80)).replace(/0$/, '1'));
+  return shuffle([c, ...picked], rng);
+}
+
 // ---------- 出題キュー ----------
 
 /** dans から count 問。全段を一巡してから次の巡へ。連続で同じ段は出さない。 */
@@ -176,19 +209,6 @@ export function recordAnswer(stats, n, correct, now = Date.now()) {
 export function accuracy(stats, n) {
   const d = stats.byDan[n];
   return d && d.total > 0 ? d.correct / d.total : null;
-}
-
-/** 正答率が低い順の「にがて」な段(しきい値未満、まだ解いていない段は含めない)。 */
-export function weakDans(stats, dans) {
-  return dans
-    .map((n) => ({ n, acc: accuracy(stats, n), total: stats.byDan[n]?.total ?? 0 }))
-    .filter((x) => x.acc !== null && x.acc < WEAK_THRESHOLD)
-    .sort((a, b) => a.acc - b.acc || b.total - a.total || a.n - b.n)
-    .map((x) => x.n);
-}
-
-export function buildWeakQueue(stats, dans, count, rng) {
-  return buildQueue(weakDans(stats, dans), count, rng);
 }
 
 // ---------- ベストタイム ----------
