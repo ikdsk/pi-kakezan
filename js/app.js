@@ -24,7 +24,7 @@ const sound = createSound(data.settings.sound);
 const fx = createFx();
 document.addEventListener('pointerdown', () => sound.unlock(), true); // iOS: 最初のタップで AudioContext を resume
 
-const RANGE_LABELS = { basic: 'きほんだけ', both: 'きほん＋はってん', advanced: 'はってんだけ' };
+const RANGE_LABELS = { basic: 'きほん', both: 'きほん＋ はってん', advanced: 'はってん' };
 const QUIZ_LENGTH = 10;
 const ADVANCE_MS = 900;
 const MODE_TITLES = { choice: '4たくクイズ', twotap: '2タップ', reverse: 'ぎゃくびき', time: 'タイムアタック', flash: 'フラッシュカード' };
@@ -98,7 +98,7 @@ function paintSound(b) {
 
 function topbar(title, meta) {
   return h('div', { class: 'topbar' },
-    h('button', { type: 'button', onclick: () => { session = null; showHome(); }, 'aria-label': 'ホームにもどる' }, '← もどる'),
+    h('button', { type: 'button', onclick: () => { session = null; showHome(); }, 'aria-label': 'ホームにもどる' }, h('span', { 'aria-hidden': 'true' }, '← '), h('span', { class: 'bkt' }, 'もどる')),
     h('span', { class: 'title' }, title),
     h('span', { class: 'meta' }, meta ?? ''),
     soundButton());
@@ -209,14 +209,14 @@ function statusCard() {
   const m = masterCount();
   const cleared = data.progress.cleared !== null;
   const timeText = timeOk ? `✔ タイム ${CLEAR_TIME_MS / 1000}びょうぎり!`
-    : best ? `タイム ベスト ${formatTime(best)}(${CLEAR_TIME_MS / 1000}びょうぎりで クリア)` : `タイム ${CLEAR_TIME_MS / 1000}びょうぎりで クリア`;
+    : best ? `タイム ベスト ${formatTime(best)} (${CLEAR_TIME_MS / 1000}びょうぎりで クリア)` : `タイム ${CLEAR_TIME_MS / 1000}びょうぎりで クリア`;
   const fill = h('i', { style: 'width:0%' });
   requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = `${li.ratio * 100}%`; }));
   const mfill = h('i', { style: `width:${(m / 19) * 100}%` });
   return h('section', { class: 'status', 'aria-label': 'レベルと クリアまでの しんちょく' },
     h('div', { class: 'lv' },
       h('span', { class: 'lvbadge' }, `Lv ${li.level}`),
-      h('span', { class: 'xptext' }, `XP ${data.progress.xp}・つぎの レベルまで あと ${li.need - li.into}`)),
+      h('span', { class: 'xptext' }, `XP ${data.progress.xp} ・ つぎの レベルまで あと ${li.need - li.into}`)),
     h('div', { class: 'xpbar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(li.need), 'aria-valuenow': String(li.into), 'aria-label': 'けいけんち' }, fill),
     h('div', { class: 'clearline' },
       h('span', {}, cleared ? '🏆 クリア ずみ!' : '👑 えんしゅうりつ マスターまで'),
@@ -247,12 +247,12 @@ function showHome() {
     h('nav', { class: 'menu' },
       menuItem('m1', 'ひょう', 'こたえを かくして おぼえる', showTable),
       menuItem('m2', 'フラッシュカード', 'めくって たしかめる', startFlash),
-      menuItem('m3', '4たくクイズ', '10もん・えらぶ', () => startQuiz('choice')),
+      menuItem('m3', '4たくクイズ', '10もん ・ えらぶ', () => startQuiz('choice')),
       menuItem('m4', '2タップ チャレンジ', 'てんの まえと あとを えらぶ', () => startQuiz('twotap')),
       menuItem('m5', 'ぎゃくびき', '「? × 3.14 = ◯」の ?', () => startQuiz('reverse')),
-      menuItem('m6', 'タイムアタック', 'きほん 9もん・はやさ しょうぶ', () => startQuiz('time')),
+      menuItem('m6', 'タイムアタック', 'きほん 9もん ・ はやさ しょうぶ', () => startQuiz('time')),
       menuItem('m7', '🏆 じっせき', `${unlockedCount} / ${ACHIEVEMENTS.length} ゲット`, showAchievements),
-      menuItem('m8', 'きろく', 'せいかい・ベストタイム', showRecords)));
+      menuItem('m8', 'きろく', 'せいかい と ベストタイム', showRecords)));
 }
 
 // ---------- ひょう(暗記シート) ----------
@@ -448,8 +448,8 @@ function twoTapNodes(s, n) {
   if (s.answered) text = partsText({ int: s.pickedInt, frac: s.pickedFrac });
   else text = `${intChosen ? s.pickedInt : '□□'}.□□`;
   const dcls = s.answered ? (s.last.ok ? ' ok' : ' ng') : '';
-  const stateOf = (isPicked, isRight) => {
-    if (!s.answered) return isPicked ? 'sel' : '';
+  const stateOf = (isPicked, isRight, otherPicked = false) => {
+    if (!s.answered) return isPicked ? 'sel' : otherPicked ? 'dim' : '';
     return `${isRight ? 'right' : isPicked ? 'wrong' : 'dim'}${isPicked ? ' pop' : ''}`;
   };
   return [
@@ -457,7 +457,7 @@ function twoTapNodes(s, n) {
     h('div', { class: 'tt-label' }, h('b', {}, '1'), 'てんの まえは?'),
     h('div', { class: 'ttrow choices-int' }, s.current.ints.map((v) =>
       h('button', {
-        type: 'button', class: stateOf(s.pickedInt === v, v === right.int), disabled: s.answered,
+        type: 'button', class: stateOf(s.pickedInt === v, v === right.int, intChosen), 'aria-pressed': String(s.pickedInt === v), disabled: s.answered,
         onclick: (e) => tapInt(v, e.currentTarget),
       }, String(v)))),
     h('div', { class: 'tt-label' }, h('b', {}, '2'), intChosen || s.answered ? 'てんの あとは?' : 'てんの あとは?(1を えらんでね)'),
@@ -614,7 +614,7 @@ function showResult(s, timeInfo) {
   nodes.push(h('section', { class: 'panel center' },
     h('p', { style: 'margin:0;font-weight:900' }, `かくとく +${s.xpGained} XP`),
     s.bestCombo >= 2 ? h('p', { style: 'margin:0' }, `🔥 さいこう ${s.bestCombo} れんぞく`) : null,
-    h('p', { class: 'muted', style: 'margin:0' }, `Lv ${lv().level}・つぎの レベルまで あと ${lv().need - lv().into} XP`)));
+    h('p', { class: 'muted', style: 'margin:0' }, `Lv ${lv().level} ・ つぎの レベルまで あと ${lv().need - lv().into} XP`)));
   nodes.push(
     h('button', { type: 'button', class: 'primary wide', style: 'margin-bottom:14px', onclick: again }, 'もういちど'),
     h('button', { type: 'button', class: 'wide', onclick: showHome }, 'ホームへ'));
@@ -653,8 +653,8 @@ function showAchievements() {
     h('section', { class: 'panel crownbox' },
       h('div', { class: 'crown' }, cleared ? '🏆' : '👑'),
       h('h2', {}, cleared ? 'えんしゅうりつ マスター クリア!' : 'クリアの じょうけん'),
-      h('p', { class: 'muted', style: 'margin:0' }, `19この だんを ぜんぶ マスター(マスター段 ${m}/19)`),
-      h('p', { class: 'muted', style: 'margin:0' }, 'マスター = その だんで 5かい せいかい、せいかいりつ 80%いじょう'),
+      h('p', { class: 'muted', style: 'margin:0' }, `19この だんを ぜんぶ マスター (マスター段 ${m}/19)`),
+      h('p', { class: 'muted', style: 'margin:0' }, 'マスター = その だんで 5かい せいかい、 せいかいりつ 80% いじょう'),
       h('p', { class: 'muted', style: 'margin:0' }, `タイムアタック ${CLEAR_TIME_MS / 1000}びょうぎり ${isTimeCleared(data.records) ? '✔' : '(まだ)'}`),
       cleared ? h('button', { type: 'button', class: 'primary', style: 'margin-top:10px', onclick: showEnding }, 'エンディングを もういちど') : null),
     h('div', { class: 'ach-list' }, ACHIEVEMENTS.map(card)));
@@ -673,8 +673,8 @@ function showRecords() {
     return h('tr', { class: mastered ? 'mastered' : '' },
       h('td', { class: 'q' }, `× ${n}`),
       h('td', {}, d ? `${d.correct} / ${d.total}` : '—'),
-      h('td', {}, acc === null ? '—' : h('span', {}, h('span', { class: 'bar', style: `width:${Math.round(acc * 60)}px` }), ` ${Math.round(acc * 100)}%`)),
-      h('td', {}, mastered ? '★マスター' : ''));
+      h('td', {}, acc === null ? '—' : h('span', {}, h('span', { class: 'bar', style: `width:${Math.round(acc * 40)}px` }), ` ${Math.round(acc * 100)}%`)),
+      h('td', { class: 'mst' }, mastered ? '★マスター' : ''));
   });
 
   const mistakes = stats.recentMistakes.slice(0, 10);
@@ -684,9 +684,9 @@ function showRecords() {
       h('h2', {}, 'タイムアタック ベスト'),
       h('p', { class: 'big', id: 'best' }, best ? formatTime(best) : 'まだ きろくなし')),
     h('section', { class: 'panel' },
-      h('h2', {}, `だんごとの せいせき(マスター ${masterCount()}/19)`),
+      h('h2', {}, `だんごとの せいせき (マスター ${masterCount()}/19)`),
       h('table', { class: 'list' },
-        h('thead', {}, h('tr', {}, h('th', {}, 'だん'), h('th', {}, 'せいかい / もんだい'), h('th', {}, 'せいかいりつ'), h('th', {}, ''))),
+        h('thead', {}, h('tr', {}, h('th', {}, 'だん'), h('th', {}, 'せいかい'), h('th', {}, 'せいかい りつ'), h('th', {}, ''))),
         h('tbody', {}, rows))),
     h('section', { class: 'panel' },
       h('h2', {}, 'さいきん まちがえた もんだい'),

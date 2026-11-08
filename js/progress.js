@@ -197,7 +197,7 @@ export const ACHIEVEMENTS = [
   ach('master-5', '⭐', 'silver', '5だん マスター', '5つの だんを マスターする', (c) => count(mastered(c, ALL_DANS), 5)),
   ach('master-basic', '🌟', 'gold', 'きほん マスター', 'きほんの 1〜9の だんを ぜんぶ マスターする', (c) => count(mastered(c, BASIC_DANS), 9)),
   ach('master-adv', '💫', 'gold', 'はってん マスター', 'はってんの 10だんを ぜんぶ マスターする', (c) => count(mastered(c, ADVANCED_DANS), 10)),
-  ach('master-all', '👑', 'rainbow', 'えんしゅうりつ マスター', '19だんを ぜんぶ マスターして、タイムアタック 40びょうぎり',
+  ach('master-all', '👑', 'rainbow', 'えんしゅうりつ マスター', '19だんを ぜんぶ マスターして、 タイムアタック 40びょうぎり',
     (c) => count(mastered(c, ALL_DANS) + (isTimeCleared(c.records) ? 1 : 0), 20)),
   // コンボ
   ach('combo-5', '🔥', 'bronze', '5れんぞく!', '5もん れんぞくで せいかいする', (c) => count(c.progress.bestCombo, 5)),

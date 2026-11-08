@@ -136,6 +136,7 @@ export function createFx() {
     }
     const t = el('div', 'fx-toast');
     t.append(item.node);
+    if (toastQueue.length) item.ms = Math.min(item.ms, 1700); // 続けて出るときは短く
     toastBox.append(t);
     let done = false;
     const close = () => {
