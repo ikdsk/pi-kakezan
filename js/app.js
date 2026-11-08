@@ -22,13 +22,15 @@ let ls = null;
 try { ls = window.localStorage; } catch { ls = null; }
 const store = createStorage(ls);
 let data = store.load();
-const sound = createSound(data.settings.sound);
+const sound = createSound({ sfx: data.settings.sound, bgm: data.settings.bgm }); // 効果音(🔊)と BGM(🎵)は別々
 const osReduced = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 /** えんしゅつ「ひかえめ」、または OS の「動きを減らす」のとき true */
 const isCalm = () => osReduced() || data.settings.fx === 'calm';
 const fx = createFx(isCalm);
 const comboFx = createComboFx({ fx, sound, isCalm });
-document.addEventListener('pointerdown', () => sound.unlock(), true); // iOS: 最初のタップで AudioContext を resume
+if (location.search.includes('debug')) window.__sound = sound; // 検証用(?debug のときだけ BGM の状態を外から見られる)
+// iOS: 最初のユーザー操作の中で AudioContext を resume してから BGM を始める(自動再生制限)
+for (const ev of ['pointerdown', 'touchend', 'click', 'keydown']) document.addEventListener(ev, () => sound.unlock(), true);
 
 const RANGE_LABELS = { basic: 'きほん', both: 'きほん＋ はってん', advanced: 'はってん' };
 const QUIZ_LENGTH = 10;
@@ -70,6 +72,7 @@ function mount(...nodes) {
   if (!session) comboFx.stopAll(); // クイズ中以外では、コンボ演出(外周の光・フィーバー・ビート)を止める
   app.replaceChildren(...nodes);
   window.scrollTo(0, 0);
+  bgmSync();
 }
 function persist() { store.save(data); }
 const lv = () => levelInfo(data.progress.xp);
@@ -85,7 +88,35 @@ function formatTime(ms) {
   return `${m}ふん ${(sec - m * 60).toFixed(1)}びょう`;
 }
 
-// ---------- 音の切り替え ----------
+// ---------- BGM(画面・コンボに合わせてレイヤーが変わる) ----------
+/** メニュー系はベースだけ、クイズ中(フラッシュカード含む)はフル編成。コンボで段階的にレイヤーが増える。 */
+function bgmSync() {
+  const s = session;
+  sound.bgmScene(s
+    ? { mode: 'quiz', combo: s.mode === 'flash' ? 0 : s.combo, time: s.mode === 'time', calm: isCalm() }
+    : { mode: 'menu' });
+}
+
+// ---------- 音の切り替え(🔊 効果音 / 🎵 BGM は別々) ----------
+function bgmButton() {
+  const b = h('button', { type: 'button', class: 'bgm-btn', onclick: () => {
+    const next = !sound.isBgmEnabled();
+    sound.setBgmEnabled(next);
+    data.settings.bgm = next;
+    persist();
+    document.querySelectorAll('.bgm-btn').forEach(paintBgm);
+  } });
+  paintBgm(b);
+  return b;
+}
+function paintBgm(b) {
+  const on = sound.isBgmEnabled();
+  b.textContent = '🎵';
+  b.classList.toggle('off', !on);
+  b.setAttribute('aria-label', on ? 'BGM: オン(タップでオフ)' : 'BGM: オフ(タップでオン)');
+  b.setAttribute('aria-pressed', String(on));
+}
+
 function soundButton() {
   const b = h('button', { type: 'button', class: 'sound-btn', onclick: () => {
     const next = !sound.isEnabled();
@@ -110,7 +141,8 @@ function topbar(title, meta) {
     h('button', { type: 'button', onclick: () => { session = null; showHome(); }, 'aria-label': 'ホームにもどる' }, h('span', { 'aria-hidden': 'true' }, '← '), h('span', { class: 'bkt' }, 'もどる')),
     h('span', { class: 'title' }, title),
     h('span', { class: 'meta' }, meta ?? ''),
-    soundButton());
+    soundButton(),
+    bgmButton());
 }
 
 // ---------- 実績・レベルの反映と演出 ----------
@@ -242,7 +274,7 @@ function showHome() {
     h('button', { type: 'button', class: cls, onclick }, h('span', { class: 't' }, title), h('span', { class: 'd' }, desc));
 
   mount(
-    h('div', { class: 'hero' }, h('h1', {}, '3.14 の かけざん'), soundButton()),
+    h('div', { class: 'hero' }, h('h1', {}, '3.14 の かけざん'), h('div', { class: 'sndpair' }, soundButton(), bgmButton())),
     h('p', { class: 'lead' }, 'こたえて、レベルを あげよう!'),
     statusCard(),
     h('section', { class: 'panel' },
@@ -543,6 +575,8 @@ function finishAnswer(ok, where, picked) {
 
   renderQuiz();
   celebrate(ok, r.xp, where, prevCombo);
+  bgmSync(); // コンボ段階が上がると BGM のレイヤーが増える(拍頭で切り替わる)
+  if (!ok && prevCombo >= 3) sound.bgmDip(); // コンボ切れ: フィルターを一瞬閉じる
   if (ok) {
     const tok = s.id;
     advanceTimer = setTimeout(() => {
@@ -639,6 +673,7 @@ function showResult(s, timeInfo) {
     h('button', { type: 'button', class: 'wide', onclick: showHome }, 'ホームへ'));
   mount(...nodes);
   session = null;
+  bgmSync(); // 結果画面はメニューの BGM(ベース)に戻す
   if (perfect) { fx.confetti(window.innerWidth / 2, window.innerHeight * 0.3, 120, 1.3); sound.combo(3); }
 }
 

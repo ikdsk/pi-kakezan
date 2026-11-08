@@ -135,7 +135,7 @@ export function createComboFx({ fx, sound, isCalm }) {
     nodes.add(rimEl);
   }
 
-  // ---------- フィーバー(コンボ 20 以上: 虹の背景・パーティクル・ビート) ----------
+  // ---------- フィーバー(コンボ 20 以上: 虹の背景・パーティクル。ビートは BGM のフィーバーレイヤーが鳴らす) ----------
   function startFever() {
     if (feverOn) return;
     feverOn = true;
@@ -143,7 +143,6 @@ export function createComboFx({ fx, sound, isCalm }) {
     feverBg.append(el('wave'));
     document.body.append(feverBg);
     nodes.add(feverBg);
-    sound.startBeat();
     feverTimer = setInterval(() => {
       if (!feverOn) return;
       fx.confetti(Math.random() * window.innerWidth, window.innerHeight * (0.55 + Math.random() * 0.4), 5, 0.9);
@@ -154,12 +153,7 @@ export function createComboFx({ fx, sound, isCalm }) {
     feverOn = false;
     if (feverTimer !== null) { clearInterval(feverTimer); feverTimer = null; }
     if (feverBg) { feverBg.remove(); nodes.delete(feverBg); feverBg = null; }
-    sound.stopBeat();
   }
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) sound.stopBeat();
-    else if (feverOn) sound.startBeat();
-  });
 
   // ---------- 1問ぶんの演出 ----------
   /** effects は effectsForMode 済みのもの。where は押したボタンの中心(画面座標)。 */
@@ -245,7 +239,6 @@ export function createComboFx({ fx, sound, isCalm }) {
     nodes.clear();
     rimEl = null; feverBg = null;
     if (feverTimer !== null) { clearInterval(feverTimer); feverTimer = null; }
-    if (feverOn) sound.stopBeat();
     feverOn = false;
     clearShake();
   }
