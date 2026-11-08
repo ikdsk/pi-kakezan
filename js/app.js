@@ -431,7 +431,8 @@ function renderQuiz() {
 
   if (s.answered) {
     nodes.push(feedbackBox(n));
-    nodes.push(h('button', { type: 'button', class: 'primary wide', id: 'next', onclick: nextQuestion }, isLast ? 'けっかを みる' : 'つぎへ'));
+    // 正解は自動で進むのでボタンなし。不正解は答えを読んでから押して進む。
+    if (!s.last.ok) nodes.push(h('button', { type: 'button', class: 'primary wide', id: 'next', onclick: nextQuestion }, isLast ? 'けっかを みる' : 'つぎへ'));
   }
   mount(...nodes);
   if (s.mode === 'time' && !s.answered) timerId = setInterval(tickTimer, 100);
