@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>BGM 書き出し(試聴用 WAV)</title>
+  <style>
+    body { font-family: sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; }
+    button { font-size: 1rem; padding: .6rem 1rem; margin: .3rem .3rem .3rem 0; }
+    #log { white-space: pre-wrap; background: #f4f4f8; padding: .8rem; border-radius: 8px; min-height: 3rem; }
+  </style>
+</head>
+<body>
+  <h1>BGM 書き出し</h1>
+  <p>アプリと<strong>同じ合成コード</strong>(js/bgm.js・js/bgmsynth.js・js/sound.js)を OfflineAudioContext で走らせ、試聴用の WAV(モノラル 44.1kHz・16bit)を作ります。
+  依存パッケージは不要です。リポジトリのルートを <code>python3 -m http.server 4199 --directory .</code> などで配信し、このページを開いてボタンを押してください。</p>
+  <button id="menu">メニュー(約 16 秒)</button>
+  <button id="quiz">クイズ(約 43 秒)</button>
+  <p>クイズ: メニュー 4 小節 → クイズに切替(小節頭)→ コンボ 5 / 10 / 20(フィーバー)と上がり、正解音・コンボ音も入り、最後にコンボ切れ。</p>
+  <div id="log"></div>
+  <script type="module">
+    import { createSound } from '../js/sound.js';
+    import { bgmTarget, transitionGrid, barSeconds, BPM_NORMAL } from '../js/bgm.js';
+    import { comboEffects } from '../js/combo.js';
+
+    const SR = 44100;
+    const log = (s) => { document.getElementById('log').textContent += s + '\n'; };
+
+    /** timeline: [{ t, fn }] を時刻順に実行しながら、実時間と同じ 25ms 刻みで BGM をスケジュールする。 */
+    async function render(seconds, scene0, buildTimeline) {
+      const ctx = new OfflineAudioContext(1, Math.ceil(SR * seconds), SR);
+      const env = { ctx, T: 0, now: () => env.T };
+      const snd = createSound({ sfx: true, bgm: true }, env);
+      const eng = snd.engine();
+      let scene = scene0;
+      eng.start(0, bgmTarget(scene0));
+      const setScene = (next) => { const grid = transitionGrid(scene, next); scene = next; if (grid) eng.setTarget(bgmTarget(next), grid); };
+      const events = buildTimeline({ snd, eng, setScene }).sort((a, b) => a.t - b.t);
+      let ei = 0;
+      for (let t = 0; t < seconds; t += 0.025) {
+        while (ei < events.length && events[ei].t <= t) { env.T = events[ei].t; events[ei].fn(); ei++; }
+        eng.advanceTo(t + 0.12);
+      }
+      eng.fadeOut(seconds - 0.6);
+      eng.advanceTo(seconds + 0.2);
+      const buf = await ctx.startRendering();
+      return { buf, stats: eng.stats() };
+    }
+
+    const menuTimeline = () => [];
+
+    function quizTimeline({ snd, eng, setScene }) {
+      const bar = barSeconds(BPM_NORMAL);
+      const ev = [];
+      ev.push({ t: 4 * bar - 1.0, fn: () => setScene({ mode: 'quiz', combo: 0 }) }); // メニュー 4 小節 → 次の小節頭でクイズに
+      const first = 8.0; const gap = 1.25; const answers = 25;
+      for (let i = 0; i < answers; i++) {
+        const combo = i + 1;
+        ev.push({ t: first + i * gap, fn: () => {
+          const e = comboEffects(combo);
+          snd.comboHit(e.sound, combo);   // アプリと同じ正解音・コンボ音(pop は正解音)
+          if (e.slam) snd.thump();
+          setScene({ mode: 'quiz', combo });
+        } });
+      }
+      const brk = first + answers * gap + 0.4;
+      ev.push({ t: brk, fn: () => { snd.wrong(); snd.glass(); eng.filterDip(brk, 0.45); setScene({ mode: 'quiz', combo: 0 }); } });
+      return ev;
+    }
+
+    function toWav(buffer) {
+      const ch = buffer.getChannelData(0);
+      const out = new DataView(new ArrayBuffer(44 + ch.length * 2));
+      const w = (o, s) => { for (let i = 0; i < s.length; i++) out.setUint8(o + i, s.charCodeAt(i)); };
+      w(0, 'RIFF'); out.setUint32(4, 36 + ch.length * 2, true); w(8, 'WAVE'); w(12, 'fmt ');
+      out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
+      out.setUint32(24, buffer.sampleRate, true); out.setUint32(28, buffer.sampleRate * 2, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true);
+      w(36, 'data'); out.setUint32(40, ch.length * 2, true);
+      for (let i = 0; i < ch.length; i++) out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, ch[i])) * 0x7fff, true);
+      return new Uint8Array(out.buffer);
+    }
+
+    const KINDS = {
+      menu: () => render(16, { mode: 'menu' }, menuTimeline),
+      quiz: () => render(43, { mode: 'menu' }, quizTimeline),
+    };
+
+    async function renderWav(kind) {
+      const { buf, stats } = await KINDS[kind]();
+      return { wav: toWav(buf), seconds: buf.duration, stats };
+    }
+    const download = (bytes, name) => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
+      a.download = name; a.click();
+    };
+    for (const kind of ['menu', 'quiz']) {
+      document.getElementById(kind).addEventListener('click', async () => {
+        log(`${kind}: 書き出し中…`);
+        const r = await renderWav(kind);
+        download(r.wav, `bgm-${kind}.wav`);
+        log(`${kind}: 完了 ${r.seconds.toFixed(1)} 秒 / 音の数 ${r.stats.created}`);
+      });
+    }
+    /** 自動実行用(Playwright など): base64 で返す。 */
+    window.renderBgm = async (kind) => {
+      const r = await renderWav(kind);
+      let bin = ''; const chunk = 0x8000;
+      for (let i = 0; i < r.wav.length; i += chunk) bin += String.fromCharCode(...r.wav.subarray(i, i + chunk));
+      return { base64: btoa(bin), seconds: r.seconds, created: r.stats.created, hits: r.stats.hits };
+    };
+    window.renderReady = true;
+  </script>
+</body>
+</html>
