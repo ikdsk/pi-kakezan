@@ -1,7 +1,7 @@
 # 円周率の掛け算 暗記アプリ 仕様 (MVP)
 
 中学受験で頻出の「3.14 × n」を、子どもがスマホ / iPad で反復暗記するための Web アプリ。
-Tailscale(tailnet 内)で配信する。ログイン・サーバー不要の静的サイト。
+GitHub Pages(`https://ikdsk.github.io/pi-kakezan/`)で公開する。ログイン・サーバー不要の静的サイト。
 
 ## 対象の段
 - 基本: 3.14 × 1〜9(必修)
@@ -75,4 +75,4 @@ Tailscale(tailnet 内)で配信する。ログイン・サーバー不要の静�
 - ビルド不要のバニラ HTML / CSS / JavaScript(ES modules)。依存パッケージなし。
 - 計算・出題・判定・記録集計などのロジックは DOM 非依存の純粋関数モジュールに分け、
   `node --test` でテストする(TDD: RED → GREEN)。
-- 配信: `python3 -m http.server <port> --bind 127.0.0.1 --directory <publish dir>` + Tailscale Serve。
+- 配信: GitHub Pages(`main` のルート・ビルドなし)。ローカル確認は `python3 -m http.server <port> --bind 127.0.0.1 --directory <publish dir>`。

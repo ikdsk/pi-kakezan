@@ -1,9 +1,18 @@
 # 3.14 の かけざん(円周率の掛け算 暗記アプリ)
 
+**公開URL: https://ikdsk.github.io/pi-kakezan/**(GitHub Pages・サブパス配信)
+
 中学受験で頻出の「3.14 × n」を、小学生が iPhone / iPad で反復して覚えるための静的 Web アプリ。
 正解で紙吹雪・コンボ・XP・レベルアップ、実績集め、クリア(エンディング)つき。
 ビルド不要のバニラ HTML / CSS / JavaScript(ES modules)、依存パッケージなし、外部通信なし。
 仕様は [docs/spec.md](docs/spec.md)。
+
+## ライセンス・プライバシー
+- ライセンス: **AGPL-3.0**([LICENSE](LICENSE))。
+- 記録(成績・レベル・実績・設定)は、遊んでいる端末のブラウザ(localStorage)にだけ保存します。サーバーへの送信・アクセス解析・外部 CDN / フォントはありません。
+
+## 公開(GitHub Pages)
+ビルドなしの静的サイトなので、`main` ブランチのルートをそのまま GitHub Pages で配信できる(`.nojekyll` あり)。すべて相対パス参照なので、`https://ikdsk.github.io/pi-kakezan/` のようなサブパスでも動く(末尾スラッシュなしで開いても `index.html` が補う)。
 
 ## モード
 | モード | 内容 |
@@ -176,4 +185,4 @@ v1(キー `pi-kakezan:v1`: 成績・ベストタイム・出題範囲)は初回�
 - 実機の iOS Safari(特に音の自動再生制限と AudioContext の resume)。Chromium のモバイルエミュレーションのみ
 - 実際に音が聞こえるかどうかの聴感(合成が実行されることは確認、音色・音量は未評価)
 - 長時間プレイ時の紙吹雪の負荷(同時 320 粒に制限)
-- Tailscale Serve 経由の配信、VoiceOver などでの操作
+- VoiceOver などでの操作
